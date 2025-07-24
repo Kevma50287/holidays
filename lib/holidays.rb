@@ -102,6 +102,48 @@ module Holidays
       rules_by_month
     end
 
+    # Load custom holiday definitions from a hash instead of files.
+    #
+    # This method provides an alternative to load_custom for dynamically creating
+    # holiday definitions without needing to write them to files first.
+    #
+    # @param [Hash] definition_hash A hash containing holiday definitions with the structure:
+    #   {
+    #     'months' => {
+    #       month_number => [
+    #         {
+    #           'name' => 'Holiday Name',
+    #           'regions' => ['region_code'],
+    #           'mday' => day_of_month,          # fixed day
+    #           'week' => week_number,           # or nth week
+    #           'wday' => weekday_number,        # with weekday
+    #           'function' => 'custom_func(args)', # or custom function
+    #           'observed' => 'observation_rule'  # observation rules
+    #         }
+    #       ]
+    #     },
+    #     'methods' => {                       # optional custom methods
+    #       'method_name' => {
+    #         'arguments' => 'arg1, arg2',
+    #         'ruby' => 'ruby_code_string'
+    #       }
+    #     }
+    #   }
+    #
+    # @return [Hash] Hash of months mapping to arrays of loaded holiday rules
+    # @raise [ArgumentError] if definition_hash is not a Hash or is empty
+    def load_custom_hash(definition_hash)
+      regions, rules_by_month, custom_methods, _ = Factory::Definition.file_parser.parse_definition_hash(definition_hash)
+
+      custom_methods.each do |method_key, method_entity|
+        custom_methods[method_key] = Factory::Definition.custom_method_proc_decorator.call(method_entity)
+      end
+
+      Factory::Definition.merger.call(regions, rules_by_month, custom_methods)
+
+      rules_by_month
+    end
+
     def load_all
       path = FULL_DEFINITIONS_PATH + "/"
 

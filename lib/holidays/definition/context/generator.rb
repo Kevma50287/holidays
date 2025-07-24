@@ -58,6 +58,37 @@ module Holidays
           [all_regions, all_rules_by_month, all_custom_methods, all_tests]
         end
 
+        def parse_definition_hash(definition_hash)
+          raise ArgumentError, "definition_hash must be a Hash" unless definition_hash.is_a?(Hash)
+          raise ArgumentError, "definition_hash cannot be empty" if definition_hash.empty?
+
+          # Parse custom methods
+          custom_methods = {}
+          methods_hash = definition_hash['methods'] || definition_hash[:methods]
+          if methods_hash
+            custom_methods = @custom_method_parser.call(methods_hash)
+          end
+
+          # Parse month definitions
+          regions = []
+          rules_by_month = {}
+          months_hash = definition_hash['months'] || definition_hash[:months]
+
+          if months_hash
+            regions, rules_by_month = parse_month_definitions(months_hash, custom_methods)
+            regions = regions.flatten.uniq
+          end
+
+          # Parse tests (if any)
+          tests = []
+          tests_hash = definition_hash['tests'] || definition_hash[:tests]
+          if tests_hash
+            tests = @test_parser.call(tests_hash)
+          end
+
+          [regions, rules_by_month, custom_methods, tests]
+        end
+
         def generate_definition_source(module_name, files, regions, rules_by_month, custom_methods, tests)
           month_strings = generate_month_definition_strings(rules_by_month, custom_methods)
 
